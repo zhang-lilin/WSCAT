@@ -1,0 +1,14 @@
+
+data_dir: ../dataset_data
+log_dir: trained_models
+debug: false
+
+# training arguments:
+
+batch_size_validation: 128
+seed: 1
+
+attack: AutoAttack
+attack_eps: 8/255
+norm: Linf
+version: standard

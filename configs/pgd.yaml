@@ -1,0 +1,15 @@
+
+data_dir: ../dataset_data
+log_dir: trained_models
+#data: cifar10
+debug: false
+
+# training arguments:
+batch_size_validation: 128
+seed: 1
+#model: wrn-28-10
+
+attack: linf-pgd
+attack_iter: 20
+attack_step: 1/255
+attack_eps: 8/255
