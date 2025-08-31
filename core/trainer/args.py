@@ -1,32 +1,31 @@
 import argparse
+
 from .utils import str2bool
 
-class _my_argparse(argparse.ArgumentParser):
+
+class _MyArgParser(argparse.ArgumentParser):
     def __init__(self, **kwargs):
-        super(_my_argparse, self).__init__(**kwargs)
+        super().__init__(**kwargs)
         self.flag_for_overwrite = False
 
     def add_argument_overwrite(self, *args, **kwargs):
-        kwargs = self._get_optional_kwargs(*args, **kwargs)
+        dest = self._get_optional_kwargs(*args, **kwargs)["dest"]
         for action in self._actions:
-            if action.dest == kwargs["dest"]:
-                for key in kwargs:
-                    if hasattr(action, key):
-                        action.__setattr__(key, kwargs[key])
+            if action.dest == dest:
+                for k, v in kwargs.items():
+                    if hasattr(action, k):
+                        setattr(action, k, v)
                 return action
-
-        return self.add_argument(*args, **kwargs)
+        return super().add_argument(*args, **kwargs)
 
     def add_argument_general(self, *args, **kwargs):
-        if self.flag_for_overwrite is True:
-            return self.add_argument_overwrite(*args, **kwargs)
-        else:
-            return self.add_argument(*args, **kwargs)
+        fn = self.add_argument_overwrite if self.flag_for_overwrite else super().add_argument
+        return fn(*args, **kwargs)
 
 
-_global_parser = _my_argparse()
+_global_parser = _MyArgParser()
 
-class _arg_values(object):
+class _ArgValues(object):
     """Global container and accessor for flags and their values."""
 
     def __init__(self):
@@ -81,4 +80,3 @@ class _arg_values(object):
         _global_parser.add_argument_general(
             *args, help=docstring, default=default, type=str2bool, **kwargs
         )
-

@@ -3,12 +3,11 @@ import os
 import numpy as np
 import torch
 import torchvision
-from .semisup_sampler import get_semisup_dataloaders
 
 from .cifar10 import load_cifar10
 from .cifar100 import load_cifar100
 from .imagenet32 import load_imagenet32
-
+from .sampler import get_semisup_dataloaders
 
 DATASETS = []
 _LOAD_DATASET_FN = {

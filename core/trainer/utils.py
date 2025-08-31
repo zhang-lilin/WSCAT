@@ -1,9 +1,8 @@
-import os
+import _pickle as pickle
 import argparse
 import datetime
-import numpy as np
-import _pickle as pickle
 
+import numpy as np
 import torch
 
 
@@ -91,7 +90,7 @@ def str2float(x):
     """
     Parse float and fractions using argument parser.
     """
-    if '/' in x:
+    if '/' in str(x):
         n, d = x.split('/')
         return float(n)/float(d)
     else:

@@ -4,5 +4,5 @@ This is the PyTorch implementation code for [Weakly Supervised Contrastive Adver
 
 ### Example usage
 ```
-python runner.py
+python tunner.py
 ```

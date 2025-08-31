@@ -1,12 +1,13 @@
 import os
-import torch
 import os.path
-from typing import Any, Callable, Optional, Tuple
+from typing import Callable, Optional
+
 import numpy as np
-from PIL import Image
+import torch
 import torchvision.transforms as transforms
-from torchvision.datasets.utils import check_integrity, download_url, verify_str_arg
+from PIL import Image
 from torchvision.datasets.vision import VisionDataset
+
 from .dataset import SemiSupervisedDataset
 
 DATA_DESC = {

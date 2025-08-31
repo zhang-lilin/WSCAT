@@ -2,15 +2,11 @@ import torch
 from torch import nn
 
 eps = 1e-7
-
 class MILoss(nn.Module):
     def __init__(self, opt):
         super(MILoss, self).__init__()
-        if opt.out_feat:
-            self.embed1 = Embed(opt.feat_dim, opt.out_feat_dim)
-            self.embed2 = Embed(opt.feat_dim, opt.out_feat_dim)
-        else:
-            self.embed1 = self.embed2 = Normalize(2)
+        self.embed1 = Embed(opt.feat_dim, opt.out_feat_dim)
+        self.embed2 = Embed(opt.feat_dim, opt.out_feat_dim)
         self.method = opt.contrast_method
         self.criterion = SupConLoss(method=self.method, temperature=opt.contrast_temp, contrast_mode=opt.contrast_mode)
 

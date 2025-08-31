@@ -1,7 +1,9 @@
+from typing import Tuple, Union
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
-from typing import Tuple, Union
+
 
 class Normalization(nn.Module):
     """

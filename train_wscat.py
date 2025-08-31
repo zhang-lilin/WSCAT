@@ -1,69 +1,52 @@
-import argparse
 import json
-import re
+import os
 import shutil
 import time
-import os
+
 import pandas as pd
 import torch
+
 from core.data import get_data_info
 from core.data import load_data
 from core.models import create_model
-from core.data import DATASETS
-from core.utils import format_time
-from core.utils import Logger
-from core.utils import seed
-from core.utils.watrain import WATrainer
-from core.utils.config import args, load_config
+from core.trainer import Logger
+from core.trainer import format_time
+from core.trainer import seed
+from core.trainer.config import args, load_config
+from core.trainer.watrain import WATrainer
 
-args.DEFINE_argument('--contrast_method', type=str, default='SupCon',
-                        choices=['SupCon', 'SimCLR'], help='choose method')
-args.DEFINE_argument('--contrast_mode', type=str, default='all',
-                        choices=['one', 'all'], help='choose method')
-args.DEFINE_argument('--contrast_temp', type=float, default=0.07,
-                        help='temperature for contrastive loss function')
-args.DEFINE_argument('--contrast_label', type=str, default='auto',
-                        choices=['auto','fixed','self'], help='choose method')
-
-args.DEFINE_argument('--out_feat', default=True, type=bool, help='feature dimension')
+args.DEFINE_argument('--contrast_method', type=str, default='SupCon', choices=['SupCon', 'SimCLR'], help='choose method')
+args.DEFINE_argument('--contrast_mode', type=str, default='all', choices=['one', 'all'], help='choose method')
+args.DEFINE_argument('--contrast_temp', type=float, default=0.07, help='temperature for contrastive loss function')
+args.DEFINE_argument('--contrast_label', type=str, default='auto', choices=['auto','fixed','self'], help='choose method')
 args.DEFINE_argument('--out_feat_dim', default=256, type=int, help='feature dimension')
-args.DEFINE_argument('--beta2', type=float, default=0.05,
-                        help='weight for contrastive loss function')
-
+args.DEFINE_argument('--beta2', type=float, default=0.05, help='weight for contrastive loss function')
 args.DEFINE_argument('--consistency_cost', type=float, default=50)
 args.DEFINE_argument('--consistency_ramp_up', type=int, default=30)
 args.DEFINE_argument('--consistency_prop_label', type=float, default=0.1)
-
 args.DEFINE_argument('--tau_after', type=float, default=0.999, help='Weight averaging decay.')
 
 # Setup
 load_config(train=True)
-assert args.data in DATASETS, f'Only data in {DATASETS} is supported!'
-# assert args.tau > 0
-args.desc = f'{args.AT}_{args.model}_{args.data}_seed{args.seed}'
-
 DATA_DIR = os.path.join(args.data_dir, args.data)
 LOG_DIR = os.path.join(args.log_dir, args.desc)
 WEIGHTS = os.path.join(LOG_DIR, 'weights-best.pt')
 resume_path = None
 if os.path.exists(LOG_DIR):
     print("File exists already.")
-    # shutil.rmtree(LOG_DIR)
     resume_path = os.path.join(LOG_DIR, 'state-last.pt')
     if os.path.exists(resume_path):
         print('Try loading from the last checkpoint in the exist file. ')
         logger = Logger(os.path.join(LOG_DIR, 'log-train.log'))
-        logger.iflog = False
+        logger.transcribe = False
     else:
-        print("File exists already but no checkpoint saved.")
+        print("No checkpoint saved.")
         shutil.rmtree(LOG_DIR)
-        os.makedirs(LOG_DIR)
-        logger = Logger(os.path.join(LOG_DIR, 'log-train.log'))
-        logger.iflog = True
-else:
+        resume_path = None
+if not os.path.exists(LOG_DIR):
     os.makedirs(LOG_DIR)
     logger = Logger(os.path.join(LOG_DIR, 'log-train.log'))
-    logger.iflog = True
+    logger.transcribe = True
 
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 logger.log(f'Using device: {torch.cuda.get_device_name(device)}')
@@ -71,6 +54,7 @@ args.device = "cuda" if torch.cuda.is_available() else "cpu"
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
 CUDA_LAUNCH_BLOCKING=1
+torch.backends.cudnn.benchmark = True
 
 ARGS_FILE = os.path.join(LOG_DIR, 'args.txt')
 if os.path.exists(ARGS_FILE) and resume_path is not None:
@@ -83,8 +67,6 @@ if os.path.exists(ARGS_FILE) and resume_path is not None:
                 pass
             else:
                 logger.log(f"ARG CONFLICT for {k}: old-{v} new-{all_keys[k]}")
-                # print(f"ARG CONFLICT for {k}: old-{v} new-{all_keys[k]}")
-
 else:
     with open(ARGS_FILE, 'w') as f:
         json.dump(args.get_dict(), f, indent=4)
@@ -94,14 +76,11 @@ info = get_data_info(DATA_DIR)
 BATCH_SIZE = args.batch_size
 BATCH_SIZE_VALIDATION = args.batch_size_validation
 
-# To speed up training
-torch.backends.cudnn.benchmark = True
-
 logger.log("### " + ("%30s" % "DATASET"))
 if args.pre_resume_path:
     pseudo_label_model = create_model(args=args, info=info, device=device, logger=None)
     path = args.pre_resume_path
-    checkpoint = torch.load(path)
+    checkpoint = torch.load(path, weights_only=False)
     if 'model_state_dict' not in checkpoint:
         raise RuntimeError('Model weights not found at {}.'.format(path))
     pseudo_label_model.load_state_dict(checkpoint['model_state_dict'])
@@ -143,19 +122,18 @@ if NUM_ADV_EPOCHS > 0:
 
 if resume_path is not None:
     if eval_dataloader and os.path.exists(WEIGHTS):
-        best_epoch = trainer.load_model(WEIGHTS, load_opt=True)
+        best_epoch = trainer.load_model(WEIGHTS, weights_only=False)
         test_acc = trainer.eval(test_dataloader, adversarial=False)
         eval_adv_acc = trainer.eval(eval_dataloader, adversarial=True)
         old_score[0], old_score[1] = test_acc, eval_adv_acc
         logger.log(f'Best checkpoint resuming at epoch {best_epoch}. ')
-    start_epoch = trainer.load_model(resume_path, load_opt=True) + 1
+    start_epoch = trainer.load_model(resume_path, weights_only=False) + 1
     logger.log(f'Resuming at epoch {start_epoch - 1}')
 else:
     start_epoch = 1
 
-adversarial = True if args.AT != 'standard' else False
 if NUM_ADV_EPOCHS >= start_epoch:
-    logger.iflog = True
+    logger.transcribe = True
     metrics = pd.DataFrame()
     test_acc = trainer.eval(test_dataloader, adversarial=False)
     logger.add('test', 'clean_acc', test_acc * 100, start_epoch - 1)
@@ -163,10 +141,9 @@ if NUM_ADV_EPOCHS >= start_epoch:
     if eval_dataloader:
         eval_acc = trainer.eval(eval_dataloader, adversarial=False)
         logger.add('eval', 'clean_acc', eval_acc * 100, start_epoch - 1)
-        if adversarial:
-            eval_acc = trainer.eval(eval_dataloader, adversarial=False)
-            logger.add('eval', 'clean_acc', eval_acc * 100, start_epoch - 1)
-    logger.log_info(start_epoch - 1, ['test', 'eval'])
+        eval_acc = trainer.eval(eval_dataloader, adversarial=False)
+        logger.add('eval', 'clean_acc', eval_acc * 100, start_epoch - 1)
+    logger.log_stats(start_epoch - 1, ['test', 'eval'])
 
     for epoch in range(start_epoch, NUM_ADV_EPOCHS + 1):
         logger.log('======= Epoch {} ======='.format(epoch))
@@ -175,7 +152,7 @@ if NUM_ADV_EPOCHS >= start_epoch:
             logger.add('scheduler', 'lr', last_lr, epoch)
 
         start = time.time()
-        res = trainer.train(train_dataloader, epoch=epoch, adversarial=adversarial, logger=logger, verbose=True)
+        res = trainer.train(train_dataloader, epoch=epoch, logger=logger, verbose=True)
         for k in res:
             if 'acc' in k:
                 logger.add('train', k, res[k] * 100, epoch)
@@ -185,22 +162,14 @@ if NUM_ADV_EPOCHS >= start_epoch:
 
         start_ = time.time()
         if eval_dataloader:
-            if adversarial:
-                eval_acc = trainer.eval(eval_dataloader, adversarial=False)
-                logger.add('eval', 'clean_acc', eval_acc * 100, epoch)
-                eval_adv_acc = trainer.eval(eval_dataloader, adversarial=True)
-                logger.add('eval', 'adversarial_acc', eval_adv_acc * 100, epoch)
-                if eval_adv_acc >= old_score[1]:
-                    old_score[0], old_score[1] = test_acc, eval_adv_acc
-                    trainer.save_model(WEIGHTS, epoch)
-                    best_epoch = epoch
-            else:
-                eval_acc = trainer.eval(eval_dataloader, adversarial=False)
-                logger.add('eval', 'clean_acc', eval_acc * 100, epoch)
-                if eval_acc >= old_score[1]:
-                    old_score[0], old_score[1] = test_acc, eval_acc
-                    trainer.save_model(WEIGHTS, epoch)
-                    best_epoch = epoch
+            eval_acc = trainer.eval(eval_dataloader, adversarial=False)
+            logger.add('eval', 'clean_acc', eval_acc * 100, epoch)
+            eval_adv_acc = trainer.eval(eval_dataloader, adversarial=True)
+            logger.add('eval', 'adversarial_acc', eval_adv_acc * 100, epoch)
+            if eval_adv_acc >= old_score[1]:
+                old_score[0], old_score[1] = test_acc, eval_adv_acc
+                trainer.save_model(WEIGHTS, epoch)
+                best_epoch = epoch
 
         test_acc = trainer.eval(test_dataloader, adversarial=False, verbose=True)
         logger.add('test', 'clean_acc', test_acc * 100, epoch)
@@ -210,10 +179,9 @@ if NUM_ADV_EPOCHS >= start_epoch:
 
         end_ = time.time()
         logger.add('time', 'eval', format_time(end_ - start_), epoch)
-        if epoch % 1 == 0:
-            trainer.save_model(os.path.join(LOG_DIR, 'state-last.pt'), epoch)
+        trainer.save_model(os.path.join(LOG_DIR, 'state-last.pt'), epoch)
 
-        logger.log_info(epoch, ['train', 'test', 'eval', 'scheduler', 'time'])
+        logger.log_stats(epoch, ['train', 'test', 'eval', 'scheduler', 'time'])
         logger.plot_learning_curve()
         logger.save_stats('stats.pkl')
 
