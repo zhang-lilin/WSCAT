@@ -15,10 +15,12 @@ from core.trainer import seed
 from core.trainer.config import args, load_config
 from core.trainer.watrain import WATrainer
 
-args.DEFINE_argument('--contrast_method', type=str, default='SupCon', choices=['SupCon', 'SimCLR'], help='choose method')
+args.DEFINE_argument('--contrast_method', type=str, default='SupCon', choices=['SupCon', 'SimCLR'],
+                     help='choose method')
 args.DEFINE_argument('--contrast_mode', type=str, default='all', choices=['one', 'all'], help='choose method')
 args.DEFINE_argument('--contrast_temp', type=float, default=0.07, help='temperature for contrastive loss function')
-args.DEFINE_argument('--contrast_label', type=str, default='auto', choices=['auto','fixed','self'], help='choose method')
+args.DEFINE_argument('--contrast_label', type=str, default='auto', choices=['auto', 'fixed', 'self'],
+                     help='choose method')
 args.DEFINE_argument('--out_feat_dim', default=256, type=int, help='feature dimension')
 args.DEFINE_argument('--beta2', type=float, default=0.05, help='weight for contrastive loss function')
 args.DEFINE_argument('--consistency_cost', type=float, default=50)
@@ -53,7 +55,7 @@ logger.log(f'Using device: {torch.cuda.get_device_name(device)}')
 args.device = "cuda" if torch.cuda.is_available() else "cpu"
 
 os.environ["TF_CPP_MIN_LOG_LEVEL"] = "3"
-CUDA_LAUNCH_BLOCKING=1
+CUDA_LAUNCH_BLOCKING = 1
 torch.backends.cudnn.benchmark = True
 
 ARGS_FILE = os.path.join(LOG_DIR, 'args.txt')
@@ -103,7 +105,6 @@ train_dataset, test_dataset, eval_dataset, train_dataloader, test_dataloader, ev
     logger=logger,
 )
 del train_dataset, test_dataset, eval_dataset
-
 
 logger.log("### " * 3 + ("%30s" % "TRAINER") + ' ###' * 3)
 seed(args.seed)
@@ -189,8 +190,16 @@ if NUM_ADV_EPOCHS >= start_epoch:
     if eval_dataloader:
         trainer.load_model(WEIGHTS)
         old_score[2] = trainer.eval(test_dataloader, adversarial=True, verbose=True)
-        logger.log('Best checkpoint:  epoch-{}  test-nat-{:.2f}%  eval-adv-{:.2f}%  test-adv-{:.2f}%.'.format(best_epoch, old_score[0]*100, old_score[1]*100, old_score[2]*100))
-    logger.log('Last checkpoint:  epoch-{}  test-nat-{:.2f}%  test-adv-{:.2f}%.'.format(NUM_ADV_EPOCHS, test_acc*100, test_adv_acc*100))
+        logger.log(
+            'Best checkpoint:  epoch-{}  test-nat-{:.2f}%  eval-adv-{:.2f}%  test-adv-{:.2f}%.'.format(best_epoch,
+                                                                                                       old_score[
+                                                                                                           0] * 100,
+                                                                                                       old_score[
+                                                                                                           1] * 100,
+                                                                                                       old_score[
+                                                                                                           2] * 100))
+    logger.log('Last checkpoint:  epoch-{}  test-nat-{:.2f}%  test-adv-{:.2f}%.'.format(NUM_ADV_EPOCHS, test_acc * 100,
+                                                                                        test_adv_acc * 100))
 
 else:
     print('\nTraining completed.')
