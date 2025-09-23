@@ -23,6 +23,22 @@ class ImageNet32(VisionDataset):
     # A Downsampled Variant of ImageNet as an Alternative to the CIFAR datasets
     # https://arxiv.org/pdf/1707.08819.pdf
 
+    train_list = [
+        ["train_data_batch_1", "27846dcaa50de8e21a7d1a35f30f0e91"],
+        ["train_data_batch_2", "c7254a054e0e795c69120a5727050e3f"],
+        ["train_data_batch_3", "4333d3df2e5ffb114b05d2ffc19b1e87"],
+        ["train_data_batch_4", "1620cdf193304f4a92677b695d70d10f"],
+        ["train_data_batch_5", "348b3c2fdbb3940c4e9e834affd3b18d"],
+        ["train_data_batch_6", "6e765307c242a1b3d7d5ef9139b48945"],
+        ["train_data_batch_7", "564926d8cbf8fc4818ba23d2faac7564"],
+        ["train_data_batch_8", "f4755871f718ccb653440b9dd0ebac66"],
+        ["train_data_batch_9", "bb6dd660c38c58552125b1a92f86b5d4"],
+        ["train_data_batch_10", "8f03f34ac4b42271a294f91bf480f29b"],
+    ]
+    valid_list = [
+        ["val_data", "3410e3017fdaefba8d5073aaa65e4bd6"],
+    ]
+
     def __init__(self, root,
                  train: bool = True,
                  transform: Optional[Callable] = None,
