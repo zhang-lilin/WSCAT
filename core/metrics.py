@@ -30,9 +30,8 @@ class cw_loss(nn.Module):
         one_hot = torch.zeros_like(outputs).scatter_(1, targets.unsqueeze(1), 1)
         real = (outputs * one_hot).sum(1)
         other = ((1 - one_hot) * outputs - one_hot * 1e4).max(1)[0]
-        loss = torch.clamp(other - real + self.confidence, min=0)
-        if reduction == 'mean':
-            loss = loss.mean()
+        loss = - torch.clamp(real - other + self.confidence, min=0)
+        loss = loss.sum()
         return loss
 
 
