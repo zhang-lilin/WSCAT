@@ -1,6 +1,6 @@
 
 attack_name: cw
 attack_opt:
-  step: 20
+  steps: 20
   alpha: 1/255
   eps: 8/255
