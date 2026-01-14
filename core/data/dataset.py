@@ -60,6 +60,9 @@ class SemiSupervisedDataset(torch.utils.data.Dataset):
 
             np.savez(_path, unsup_indices=unsup_indices, sup_indices=sup_indices)
 
+        for idx in unsup_indices:
+            self.dataset.targets[idx] = -1
+
         self.sup_indices = sup_indices
         self.unsup_indices = unsup_indices
 
